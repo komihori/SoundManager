@@ -7,9 +7,9 @@ using System.Linq;
 //using UnityEditor;
 //#endif
 
-namespace SoundSystem {
-    public class SoundManager : MonoBehaviour {
-        public static SoundManager Instance { get; private set; }
+namespace SoundManagement {
+    public class AudioSoundManager : MonoBehaviour {
+        public static AudioSoundManager Instance { get; private set; }
         public List<AudioClip> bgmClips = new List<AudioClip>();
         public List<AudioClip> seClips = new List<AudioClip>();
         [SerializeField] AudioSource bgm;
@@ -17,8 +17,8 @@ namespace SoundSystem {
         [SerializeField] AudioSource seSource;
         private List<AudioSource> seAudioSources = new List<AudioSource>();
         public AudioMixerGroup bgmAMG, seAMG;
-        [Range(0f, 1f)] public float bgmVolume;
-        [Range(0f, 1f)] public float seVolume;
+        [Range(0f, 1f)] public float bgmVolume = 1f;
+        [Range(0f, 1f)] public float seVolume = 1f;
         private void Awake() {
             if (Instance == null) {
                 Instance = this;
@@ -50,7 +50,7 @@ namespace SoundSystem {
             }
             return audioSources;
         }
-        public void _PlaySE(string clipName) {
+        public void _PlaySE(string clipName, float time = 0f) {
             AudioClip audio = seClips.FirstOrDefault(clip => clip.name == clipName);
             if (audio == null) {
                 Debug.Log(clipName + "????????????????");
@@ -58,14 +58,14 @@ namespace SoundSystem {
             } else {
                 foreach (var audioSource in seAudioSources) {
                     if (!audioSource.isPlaying) {
+                        audioSource.time = time;
                         audioSource.pitch = 1f;
-                        audioSource.Play(audio, seVolume);
+                        audioSource.PlayOneShot(audio, seVolume);
                         return;
                     }
                 }
                 seAudioSources[0].pitch = 1f;
-                seAudioSources[0].Play(audio, seVolume);
-
+                seAudioSources[0].PlayOneShot(audio, seVolume);
             }
         }
         public void _PlayBGM(string clipName) {
@@ -74,7 +74,10 @@ namespace SoundSystem {
                 Debug.Log(clipName + "????????????????");
                 return;
             }
-            bgm.Play(audio, bgmVolume);
+            bgm.clip = audio;
+            bgm.volume = bgmVolume;
+            bgm.loop = true;
+            bgm.Play();
             Debug.Log($"PlayBGM:{audio.name}");
         }
         public void _StopAllBGM() {
@@ -91,7 +94,7 @@ namespace SoundSystem {
             }
             audioSource.Stop();
         }
-        public void _PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
+        /*public void _PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
             AudioClip audioClip = bgmClips.FirstOrDefault(clip => clip.name == clipName);
             if (audioClip == null) {
                 Debug.Log(clipName + "????????????????");
@@ -103,33 +106,39 @@ namespace SoundSystem {
                     return;
                 }
             }
-        }
-        public void _StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
+        }*/
+        /*public void _StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
             AudioSource audioSource = bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
             if (audioSource == null || audioSource.isPlaying == false) {
                 Debug.Log(clipName + "????????????????????");
                 return;
             }
             StartCoroutine(audioSource.StopWithFadeOut(fadeTime));
-        }
+        }*/
 
         public void SetVolume(float vol) {
+            SetBGMVolume(vol);
+            SetSEVolume(vol);
+        }
+        public void SetBGMVolume(float vol) {
             foreach (var s in this.bgmAudioSources) {
                 s.volume = vol;
             }
+            bgm.volume = vol;
+            bgmVolume = vol;
+        }
+        public void SetSEVolume(float vol) {
             foreach (var s in this.seAudioSources) {
                 s.volume = vol;
             }
-            bgm.volume = vol;
             seSource.volume = vol;
-            bgmVolume = vol;
             seVolume = vol;
         }
 
-        public static void PlaySE(string clipName) => SoundManager.Instance._PlaySE(clipName);
-        public static void PlayBGM(string clipName) => SoundManager.Instance._PlayBGM(clipName);
-        public static void PlayBGMWithFadeIn(string clipName, float fadeTime) => SoundManager.Instance._PlayBGMWithFadeIn(clipName, fadeTime);
-        public static void StopBGMWithFadeOut(string clipName, float fadeTime) => SoundManager.Instance._StopBGMWithFadeOut(clipName, fadeTime);
+        public static void PlaySE(string clipName, float time = 0f) => AudioSoundManager.Instance._PlaySE(clipName, time);
+        public static void PlayBGM(string clipName) => AudioSoundManager.Instance._PlayBGM(clipName);
+        //public static void PlayBGMWithFadeIn(string clipName, float fadeTime) => SoundManager.Instance._PlayBGMWithFadeIn(clipName, fadeTime);
+        //public static void StopBGMWithFadeOut(string clipName, float fadeTime) => SoundManager.Instance._StopBGMWithFadeOut(clipName, fadeTime);
     }
 
 //#if UNITY_EDITOR
