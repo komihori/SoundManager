@@ -94,7 +94,7 @@ namespace SoundManagement {
             }
             audioSource.Stop();
         }
-        /*public void _PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
+        public void _PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
             AudioClip audioClip = bgmClips.FirstOrDefault(clip => clip.name == clipName);
             if (audioClip == null) {
                 Debug.Log(clipName + "????????????????");
@@ -106,15 +106,15 @@ namespace SoundManagement {
                     return;
                 }
             }
-        }*/
-        /*public void _StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
+        }
+        public void _StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
             AudioSource audioSource = bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
             if (audioSource == null || audioSource.isPlaying == false) {
                 Debug.Log(clipName + "????????????????????");
                 return;
             }
             StartCoroutine(audioSource.StopWithFadeOut(fadeTime));
-        }*/
+        }
 
         public void SetVolume(float vol) {
             SetBGMVolume(vol);
@@ -134,11 +134,6 @@ namespace SoundManagement {
             seSource.volume = vol;
             seVolume = vol;
         }
-
-        public static void PlaySE(string clipName, float time = 0f) => AudioSoundManager.Instance._PlaySE(clipName, time);
-        public static void PlayBGM(string clipName) => AudioSoundManager.Instance._PlayBGM(clipName);
-        //public static void PlayBGMWithFadeIn(string clipName, float fadeTime) => SoundManager.Instance._PlayBGMWithFadeIn(clipName, fadeTime);
-        //public static void StopBGMWithFadeOut(string clipName, float fadeTime) => SoundManager.Instance._StopBGMWithFadeOut(clipName, fadeTime);
     }
 
 //#if UNITY_EDITOR
