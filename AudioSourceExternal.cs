@@ -14,6 +14,7 @@ namespace SoundManagement {
                 source.volume = Mathf.Min(volume * t, volume);
                 yield return null;
             }
+            source.volume = volume;
         }
         public static IEnumerator StopWithFadeOut(this AudioSource source, float fadeTime = 0.1f) {
             float volume = source.volume;
@@ -23,6 +24,8 @@ namespace SoundManagement {
                 source.volume = Mathf.Min(volume * (1 - t), volume);
                 yield return null;
             }
+            source.Stop();
+            source.clip = null;
         }
     }
 }
