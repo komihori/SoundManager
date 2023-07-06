@@ -12,14 +12,12 @@ namespace SoundManagement {
         public static AudioSoundManager Instance { get; private set; }
         [SerializeField] List<AudioClip> _bgmClips = new List<AudioClip>();
         [SerializeField] List<AudioClip> _seClips = new List<AudioClip>();
-        [SerializeField] AudioSource _bgm = null;
-        [SerializeField] AudioSource _seSource = null;
         [SerializeField] AudioMixerGroup _masterAMG = null;
         [SerializeField] AudioMixerGroup _bgmAMG = null;
         [SerializeField] AudioMixerGroup _seAMG = null;
         private List<AudioSource> _bgmAudioSources = new List<AudioSource>();
         private List<AudioSource> _seAudioSources = new List<AudioSource>();
-        private void Awake() {
+        void Awake() {
             if (Instance == null) {
                 Instance = this;
                 DontDestroyOnLoad(this);
@@ -27,13 +25,10 @@ namespace SoundManagement {
                 Destroy(this);
                 return;
             }
-            _bgm = InitializeAudioSource(this.gameObject, true, _bgmAMG);
-            _seSource = InitializeAudioSource(this.gameObject, false, _seAMG);
-            _bgmAudioSources = InitializeAudioSources(this.gameObject, true, _bgmAMG, _bgmClips.Count);
-            _seAudioSources = InitializeAudioSources(this.gameObject, false, _seAMG, _seClips.Count);
+            _bgmAudioSources = InitializeAudioSources(this.gameObject, true, _bgmAMG, 2);
+            _seAudioSources = InitializeAudioSources(this.gameObject, false, _seAMG, 5);
         }
-
-        private AudioSource InitializeAudioSource(GameObject parentGameObject, bool isLoop = false, AudioMixerGroup amg = null) {
+        private static AudioSource InitializeAudioSource(GameObject parentGameObject, bool isLoop = false, AudioMixerGroup amg = null) {
             AudioSource audio = parentGameObject.AddComponent<AudioSource>();
             audio.loop = isLoop;
             audio.playOnAwake = false;
@@ -42,7 +37,7 @@ namespace SoundManagement {
             }
             return audio;
         }
-        private List<AudioSource> InitializeAudioSources(GameObject parentGameObject, bool isLoop = false, AudioMixerGroup amg = null, int count = 1) {
+        private static List<AudioSource> InitializeAudioSources(GameObject parentGameObject, bool isLoop = false, AudioMixerGroup amg = null, int count = 1) {
             List<AudioSource> audioSources = new List<AudioSource>();
             for (int i = 0; i < count; i++) {
                 AudioSource audioSource = InitializeAudioSource(parentGameObject, isLoop, amg);
@@ -50,65 +45,65 @@ namespace SoundManagement {
             }
             return audioSources;
         }
-        public void PlaySE(string clipName) {
-            AudioClip audio = _seClips.FirstOrDefault(clip => clip.name == clipName);
-            if (audio == null) {
+        public AudioSource PlaySE(string clipName) {
+            AudioClip clip = _seClips.FirstOrDefault(clip => clip.name == clipName);
+            if (clip == null) {
                 Debug.LogWarning($"{clipName}が見つかりません.");
-                return;
+                return null;
             } else {
-                foreach (var audioSource in _seAudioSources) {
-                    if (!audioSource.isPlaying) {
-                        audioSource.pitch = 1f;
-                        audioSource.PlayOneShot(audio);
-                        return;
-                    }
+                AudioSource source = _seAudioSources.FirstOrDefault(s => !s.isPlaying);
+                if (source == null) {
+                    AudioSource temp = InitializeAudioSource(this.gameObject, false, _seAMG);
+                    _seAudioSources.Add(temp);
+                    source = temp;
                 }
-                _seAudioSources[0].pitch = 1f;
-                _seAudioSources[0].PlayOneShot(audio);
+                source.volume = 1f;
+                source.PlayOneShot(clip);
+                return source;
             }
         }
-        public void PlayBGM(string clipName) {
-            AudioClip audio = _bgmClips.FirstOrDefault(clip => clip.name == clipName);
-            if (audio == null) {
+        public AudioSource PlayBGM(string clipName, float fadeTime = 0f, bool stopOther = true) {
+            AudioClip clip = _bgmClips.FirstOrDefault(c => c.name == clipName);
+            if (clip == null) {
                 Debug.LogWarning($"{clipName}が見つかりません.");
+                return null;
+            }
+            AudioSource source = _bgmAudioSources.FirstOrDefault(s => s.clip == null);
+            if (source == null) {
+                AudioSource temp = InitializeAudioSource(this.gameObject, true, _bgmAMG);
+                _bgmAudioSources.Add(temp);
+                source = temp;
+            }
+            if (fadeTime > 0f)
+                StartCoroutine(source.PlayWithFadeIn(clip, fadeTime));
+            else {
+                source.clip = clip;
+                source.volume = 1f;
+                source.Play();
+            }
+            if (stopOther) {
+                foreach (var s in _bgmAudioSources)
+                    if (s != source) StopBGM(s, fadeTime);
+            }
+            return source;
+        }
+        public void StopBGM(string clipName, float fadeTime = 0f) {
+            AudioSource source = _bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
+            if (source == null || source.isPlaying == false) {
                 return;
             }
-            _bgm.clip = audio;
-            _bgm.loop = true;
-            _bgm.Play();
+            StopBGM(source, fadeTime);
         }
-        public void StopAllBGM() {
-            foreach (var s in this._bgmAudioSources) {
-                s.Stop();
+        public void StopBGM(AudioSource source, float fadeTime = 0f) {
+            if (fadeTime > 0f) StartCoroutine(source.StopWithFadeOut(fadeTime));
+            else {
+                source.Stop();
+                source.clip = null;
             }
-            _bgm.Stop();
         }
-        public void StopBGM(string clipName) {
-            AudioSource audioSource = _bgmAudioSources.FirstOrDefault(s => s.clip.name == clipName);
-            if (audioSource == null || audioSource.isPlaying) {
-                return;
-            }
-            audioSource.Stop();
-            audioSource.clip = null;
+        public void StopAllBGM(float fadeTime = 1f) {
+            foreach (var s in _bgmAudioSources) if (s != null) StopBGM(s, fadeTime);
         }
-        public void PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
-            AudioClip audioClip = _bgmClips.FirstOrDefault(c => c.name == clipName);
-            if (audioClip == null) {
-                Debug.LogWarning($"{clipName}が見つかりません.");
-                return;
-            }
-            var source = _bgmAudioSources.FirstOrDefault(s => s.clip == null);
-            StartCoroutine(source.PlayWithFadeIn(audioClip, fadeTime));
-        }
-        public void StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
-            AudioSource audioSource = _bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
-            if (audioSource == null || audioSource.isPlaying == false) {
-                Debug.LogWarning($"{clipName}が見つかりません.");
-                return;
-            }
-            StartCoroutine(audioSource.StopWithFadeOut(fadeTime));
-        }
-
         public void SetMasterVolume(float vol) {
             _masterAMG.audioMixer.SetFloat("Master", Vol2Db(vol));
         }
@@ -140,11 +135,12 @@ namespace SoundManagement {
 #if UNITY_EDITOR
     [CustomEditor(typeof(AudioSoundManager))]
     public class SoundManagerEditor : Editor {
-        [SerializeField] string _bgmClipName;
+        [SerializeField] string _bgmClipName = "None";
         [SerializeField] float _bgmFadeTime = 1;
-        [SerializeField] bool _bgmFade;
-        [SerializeField] string _seClipName;
-        [SerializeField] bool _player = false;
+        [SerializeField] bool _bgmFade = true;
+        [SerializeField] bool _bgmStopOther = true;
+        [SerializeField] string _seClipName = "None";
+        [SerializeField] bool _player = true;
         public override void OnInspectorGUI() {
             base.OnInspectorGUI();
             var _target = target as AudioSoundManager;
@@ -159,16 +155,16 @@ namespace SoundManagement {
                     GUILayout.BeginHorizontal();
                     _bgmFade = EditorGUILayout.ToggleLeft("Fade", _bgmFade);
                     if (_bgmFade) {
-                        this._bgmFadeTime = EditorGUILayout.FloatField(Mathf.Min(0f, _bgmFadeTime));
+                        this._bgmFadeTime = EditorGUILayout.FloatField(Mathf.Max(0f, _bgmFadeTime));
                     }
                     GUILayout.EndHorizontal();
+                    _bgmStopOther = EditorGUILayout.ToggleLeft("Stop Other", _bgmStopOther);
                     GUILayout.BeginHorizontal();
                     if (GUILayout.Button("Play")) {
-                        if (!_bgmFade) _target.PlayBGM(_bgmClipName);
-                        else _target.PlayBGMWithFadeIn(_bgmClipName, _bgmFadeTime);
+                        _target.PlayBGM(_bgmClipName, _bgmFade ? _bgmFadeTime : 0f, _bgmStopOther);
                     }
                     if (GUILayout.Button("Stop")) {
-                        _target.StopBGM(_bgmClipName);
+                        _target.StopBGM(_bgmClipName, _bgmFade ? _bgmFadeTime : 0f);
                     }
                     if (GUILayout.Button("StopAll")) {
                         _target.StopAllBGM();
