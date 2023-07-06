@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Audio;
 using System.Linq;
-//#if UNITY_EDITOR
-//using UnityEditor;
-//#endif
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 namespace SoundManagement {
     public class AudioSoundManager : MonoBehaviour {
@@ -110,52 +110,81 @@ namespace SoundManagement {
         }
 
         public void SetMasterVolume(float vol) {
-            vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
-            _masterAMG.audioMixer.SetFloat("Master", vol);
+            _masterAMG.audioMixer.SetFloat("Master", Vol2Db(vol));
         }
         public void SetBGMVolume(float vol) {
-            vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
-            _bgmAMG.audioMixer.SetFloat("BGM", vol);
+            _bgmAMG.audioMixer.SetFloat("BGM", Vol2Db(vol));
         }
         public void SetSEVolume(float vol) {
-            vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
-            _seAMG.audioMixer.SetFloat("SE", vol);
+            _seAMG.audioMixer.SetFloat("SE", Vol2Db(vol));
         }
+        public float GetMasterVolume() {
+            float db;
+            _masterAMG.audioMixer.GetFloat("Master", out db);
+            return Db2Vol(db);
+        }
+        public float GetBGMVolume() {
+            float db;
+            _bgmAMG.audioMixer.GetFloat("BGM", out db);
+            return Db2Vol(db);
+        }
+        public float GetSEVolume() {
+            float db;
+            _seAMG.audioMixer.GetFloat("SE", out db);
+            return Db2Vol(db);
+        }
+        public static float Vol2Db(float vol) => Mathf.Log10(vol) * 20f;
+        public static float Db2Vol(float db) => Mathf.Pow(10, db / 20f);
     }
 
-//#if UNITY_EDITOR
-//    [CustomEditor(typeof(SoundManager))]
-//    public class SoundManagerEditor : Editor {
-//        [SerializeField] string bgmClipName;
-//        [SerializeField] float fadeTime = 1;
-//        [SerializeField] bool fade;
-//        public override void OnInspectorGUI() {
-//            base.OnInspectorGUI();
-            
-
-//            var _target = target as SoundManager;
-//            EditorGUILayout.LabelField("--- Editor ---");
-//            this.bgmClipName = EditorGUILayout.TextField("BGM Clip Name", this.bgmClipName);
-//            this.fade = EditorGUILayout.ToggleLeft("Fade", this.fade);
-//            if (!this.fade) {
-//                if (GUILayout.Button("Play")) {
-//                    _target._PlayBGM(this.bgmClipName);
-//                }
-                
-//            } else {
-//                this.fadeTime = EditorGUILayout.FloatField(this.fadeTime);
-//                if (GUILayout.Button("Play")) {
-//                    _target._PlayBGMWithFadeIn(this.bgmClipName, this.fadeTime);
-//                }
-//            }
-//            if (GUILayout.Button("Stop")) {
-//                _target._StopBGM(bgmClipName);
-//            }
-//            if (GUILayout.Button("StopAll")) {
-//                _target._StopAllBGM();
-//            }
-//        }
-//    }
-//#endif
+#if UNITY_EDITOR
+    [CustomEditor(typeof(AudioSoundManager))]
+    public class SoundManagerEditor : Editor {
+        [SerializeField] string _bgmClipName;
+        [SerializeField] float _bgmFadeTime = 1;
+        [SerializeField] bool _bgmFade;
+        [SerializeField] string _seClipName;
+        [SerializeField] bool _player = false;
+        public override void OnInspectorGUI() {
+            base.OnInspectorGUI();
+            var _target = target as AudioSoundManager;
+            EditorGUILayout.LabelField("--- Editor ---");
+            _target.SetMasterVolume(EditorGUILayout.Slider("Master Volume", _target.GetMasterVolume(), 0f, 1f));
+            _target.SetBGMVolume(EditorGUILayout.Slider("BGM Volume", _target.GetBGMVolume(), 0f, 1f));
+            _target.SetSEVolume(EditorGUILayout.Slider("SE Volume", _target.GetSEVolume(), 0f, 1f));
+            if (_player = EditorGUILayout.Foldout(_player, "Player")) {
+                EditorGUI.indentLevel++;
+                {
+                    this._bgmClipName = EditorGUILayout.TextField("BGM Clip Name", _bgmClipName);
+                    GUILayout.BeginHorizontal();
+                    _bgmFade = EditorGUILayout.ToggleLeft("Fade", _bgmFade);
+                    if (_bgmFade) {
+                        this._bgmFadeTime = EditorGUILayout.FloatField(Mathf.Min(0f, _bgmFadeTime));
+                    }
+                    GUILayout.EndHorizontal();
+                    GUILayout.BeginHorizontal();
+                    if (GUILayout.Button("Play")) {
+                        if (!_bgmFade) _target.PlayBGM(_bgmClipName);
+                        else _target.PlayBGMWithFadeIn(_bgmClipName, _bgmFadeTime);
+                    }
+                    if (GUILayout.Button("Stop")) {
+                        _target.StopBGM(_bgmClipName);
+                    }
+                    if (GUILayout.Button("StopAll")) {
+                        _target.StopAllBGM();
+                    }
+                    GUILayout.EndHorizontal();
+                }
+                {
+                    _seClipName = EditorGUILayout.TextField("SE Clip Name", _seClipName);
+                    if (GUILayout.Button("Play")) {
+                        _target.PlaySE(_seClipName);
+                    }
+                }
+                EditorGUI.indentLevel--;
+            }
+        }
+    }
+#endif
 
 }
