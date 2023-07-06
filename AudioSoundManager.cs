@@ -17,8 +17,6 @@ namespace SoundManagement {
         [SerializeField] AudioMixerGroup _masterAMG = null;
         [SerializeField] AudioMixerGroup _bgmAMG = null;
         [SerializeField] AudioMixerGroup _seAMG = null;
-        [Range(0f, 1f)] public float _bgmVolume = 1f;
-        [Range(0f, 1f)] public float _seVolume = 1f;
         private List<AudioSource> _bgmAudioSources = new List<AudioSource>();
         private List<AudioSource> _seAudioSources = new List<AudioSource>();
         private void Awake() {
@@ -61,12 +59,12 @@ namespace SoundManagement {
                 foreach (var audioSource in _seAudioSources) {
                     if (!audioSource.isPlaying) {
                         audioSource.pitch = 1f;
-                        audioSource.PlayOneShot(audio, _seVolume);
+                        audioSource.PlayOneShot(audio);
                         return;
                     }
                 }
                 _seAudioSources[0].pitch = 1f;
-                _seAudioSources[0].PlayOneShot(audio, _seVolume);
+                _seAudioSources[0].PlayOneShot(audio);
             }
         }
         public void PlayBGM(string clipName) {
@@ -76,7 +74,6 @@ namespace SoundManagement {
                 return;
             }
             _bgm.clip = audio;
-            _bgm.volume = _bgmVolume;
             _bgm.loop = true;
             _bgm.Play();
         }
@@ -101,7 +98,7 @@ namespace SoundManagement {
                 return;
             }
             var source = AllocateAudioSourceBGM();
-            StartCoroutine(source.PlayWithFadeIn(audioClip, fadeTime, _bgmVolume));
+            StartCoroutine(source.PlayWithFadeIn(audioClip, fadeTime));
         }
         public void StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
             AudioSource audioSource = _bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
@@ -112,23 +109,17 @@ namespace SoundManagement {
             StartCoroutine(audioSource.StopWithFadeOut(fadeTime));
         }
 
-        public void SetVolume(float vol) {
-            SetBGMVolume(vol);
-            SetSEVolume(vol);
+        public void SetMasterVolume(float vol) {
+            vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
+            _masterAMG.audioMixer.SetFloat("Master", vol);
         }
         public void SetBGMVolume(float vol) {
-            foreach (var s in this._bgmAudioSources) {
-                s.volume = vol;
-            }
-            _bgm.volume = vol;
-            _bgmVolume = vol;
+            vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
+            _bgmAMG.audioMixer.SetFloat("BGM", vol);
         }
         public void SetSEVolume(float vol) {
-            foreach (var s in this._seAudioSources) {
-                s.volume = vol;
-            }
-            _seSource.volume = vol;
-            _seVolume = vol;
+            vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
+            _seAMG.audioMixer.SetFloat("SE", vol);
         }
 
         private AudioSource FindAudioSourceBGM(string clipName) {
