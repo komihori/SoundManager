@@ -84,7 +84,7 @@ namespace SoundManagement {
             _bgm.Stop();
         }
         public void StopBGM(string clipName) {
-            AudioSource audioSource = FindAudioSourceBGM(clipName);
+            AudioSource audioSource = _bgmAudioSources.FirstOrDefault(s => s.clip.name == clipName);
             if (audioSource == null || audioSource.isPlaying) {
                 return;
             }
@@ -92,12 +92,12 @@ namespace SoundManagement {
             audioSource.clip = null;
         }
         public void PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
-            AudioClip audioClip = FindAudioClipBGM(clipName);
+            AudioClip audioClip = _bgmClips.FirstOrDefault(c => c.name == clipName);
             if (audioClip == null) {
                 Debug.LogWarning($"{clipName}が見つかりません.");
                 return;
             }
-            var source = AllocateAudioSourceBGM();
+            var source = _bgmAudioSources.FirstOrDefault(s => s.clip == null);
             StartCoroutine(source.PlayWithFadeIn(audioClip, fadeTime));
         }
         public void StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
@@ -120,22 +120,6 @@ namespace SoundManagement {
         public void SetSEVolume(float vol) {
             vol = Mathf.Clamp(Mathf.Log10(vol) * 20f, -80f, 0f);
             _seAMG.audioMixer.SetFloat("SE", vol);
-        }
-
-        private AudioSource FindAudioSourceBGM(string clipName) {
-            return _bgmAudioSources.FirstOrDefault(s => s.clip.name == clipName);
-        }
-        private AudioClip FindAudioClipBGM(string clipName) {
-            foreach (var c in _bgmClips) {
-                if (c.name == clipName) return c;
-            }
-            return null;
-        }
-        private AudioSource AllocateAudioSourceBGM() {
-            foreach (var s in _bgmAudioSources) {
-                if (s.clip == null) return s;
-            }
-            return null;
         }
     }
 
