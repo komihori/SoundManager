@@ -10,15 +10,17 @@ using System.Linq;
 namespace SoundManagement {
     public class AudioSoundManager : MonoBehaviour {
         public static AudioSoundManager Instance { get; private set; }
-        public List<AudioClip> bgmClips = new List<AudioClip>();
-        public List<AudioClip> seClips = new List<AudioClip>();
-        [SerializeField] AudioSource bgm;
-        private List<AudioSource> bgmAudioSources = new List<AudioSource>();
-        [SerializeField] AudioSource seSource;
-        private List<AudioSource> seAudioSources = new List<AudioSource>();
-        public AudioMixerGroup bgmAMG, seAMG;
-        [Range(0f, 1f)] public float bgmVolume = 1f;
-        [Range(0f, 1f)] public float seVolume = 1f;
+        [SerializeField] List<AudioClip> _bgmClips = new List<AudioClip>();
+        [SerializeField] List<AudioClip> _seClips = new List<AudioClip>();
+        [SerializeField] AudioSource _bgm = null;
+        [SerializeField] AudioSource _seSource = null;
+        [SerializeField] AudioMixerGroup _masterAMG = null;
+        [SerializeField] AudioMixerGroup _bgmAMG = null;
+        [SerializeField] AudioMixerGroup _seAMG = null;
+        [Range(0f, 1f)] public float _bgmVolume = 1f;
+        [Range(0f, 1f)] public float _seVolume = 1f;
+        private List<AudioSource> _bgmAudioSources = new List<AudioSource>();
+        private List<AudioSource> _seAudioSources = new List<AudioSource>();
         private void Awake() {
             if (Instance == null) {
                 Instance = this;
@@ -27,10 +29,10 @@ namespace SoundManagement {
                 Destroy(this);
                 return;
             }
-            bgm = InitializeAudioSource(this.gameObject, true, bgmAMG);
-            seSource = InitializeAudioSource(this.gameObject, false, seAMG);
-            bgmAudioSources = InitializeAudioSources(this.gameObject, true, bgmAMG, bgmClips.Count);
-            seAudioSources = InitializeAudioSources(this.gameObject, false, seAMG, seClips.Count);
+            _bgm = InitializeAudioSource(this.gameObject, true, _bgmAMG);
+            _seSource = InitializeAudioSource(this.gameObject, false, _seAMG);
+            _bgmAudioSources = InitializeAudioSources(this.gameObject, true, _bgmAMG, _bgmClips.Count);
+            _seAudioSources = InitializeAudioSources(this.gameObject, false, _seAMG, _seClips.Count);
         }
 
         private AudioSource InitializeAudioSource(GameObject parentGameObject, bool isLoop = false, AudioMixerGroup amg = null) {
@@ -50,67 +52,61 @@ namespace SoundManagement {
             }
             return audioSources;
         }
-        public void _PlaySE(string clipName, float time = 0f) {
-            AudioClip audio = seClips.FirstOrDefault(clip => clip.name == clipName);
+        public void PlaySE(string clipName) {
+            AudioClip audio = _seClips.FirstOrDefault(clip => clip.name == clipName);
             if (audio == null) {
-                Debug.Log(clipName + "????????????????");
+                Debug.LogWarning($"{clipName}が見つかりません.");
                 return;
             } else {
-                foreach (var audioSource in seAudioSources) {
+                foreach (var audioSource in _seAudioSources) {
                     if (!audioSource.isPlaying) {
-                        audioSource.time = time;
                         audioSource.pitch = 1f;
-                        audioSource.PlayOneShot(audio, seVolume);
+                        audioSource.PlayOneShot(audio, _seVolume);
                         return;
                     }
                 }
-                seAudioSources[0].pitch = 1f;
-                seAudioSources[0].PlayOneShot(audio, seVolume);
+                _seAudioSources[0].pitch = 1f;
+                _seAudioSources[0].PlayOneShot(audio, _seVolume);
             }
         }
-        public void _PlayBGM(string clipName) {
-            AudioClip audio = bgmClips.FirstOrDefault(clip => clip.name == clipName);
+        public void PlayBGM(string clipName) {
+            AudioClip audio = _bgmClips.FirstOrDefault(clip => clip.name == clipName);
             if (audio == null) {
-                Debug.Log(clipName + "????????????????");
+                Debug.LogWarning($"{clipName}が見つかりません.");
                 return;
             }
-            bgm.clip = audio;
-            bgm.volume = bgmVolume;
-            bgm.loop = true;
-            bgm.Play();
-            Debug.Log($"PlayBGM:{audio.name}");
+            _bgm.clip = audio;
+            _bgm.volume = _bgmVolume;
+            _bgm.loop = true;
+            _bgm.Play();
         }
-        public void _StopAllBGM() {
-            foreach (var s in this.bgmAudioSources) {
+        public void StopAllBGM() {
+            foreach (var s in this._bgmAudioSources) {
                 s.Stop();
-                Debug.Log($"Stop:{s.name}");
             }
-            bgm.Stop();
+            _bgm.Stop();
         }
-        public void _StopBGM(string clipName) {
-            AudioSource audioSource = bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
+        public void StopBGM(string clipName) {
+            AudioSource audioSource = FindAudioSourceBGM(clipName);
             if (audioSource == null || audioSource.isPlaying) {
                 return;
             }
             audioSource.Stop();
+            audioSource.clip = null;
         }
-        public void _PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
-            AudioClip audioClip = bgmClips.FirstOrDefault(clip => clip.name == clipName);
+        public void PlayBGMWithFadeIn(string clipName, float fadeTime = 2f) {
+            AudioClip audioClip = FindAudioClipBGM(clipName);
             if (audioClip == null) {
-                Debug.Log(clipName + "????????????????");
+                Debug.LogWarning($"{clipName}が見つかりません.");
                 return;
             }
-            foreach (var audio in bgmAudioSources) {
-                if (audio.clip == null) {
-                    StartCoroutine(audio.PlayWithFadeIn(audioClip, fadeTime, bgmVolume));
-                    return;
-                }
-            }
+            var source = AllocateAudioSourceBGM();
+            StartCoroutine(source.PlayWithFadeIn(audioClip, fadeTime, _bgmVolume));
         }
-        public void _StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
-            AudioSource audioSource = bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
+        public void StopBGMWithFadeOut(string clipName, float fadeTime = 2f) {
+            AudioSource audioSource = _bgmAudioSources.FirstOrDefault(bas => bas.clip.name == clipName);
             if (audioSource == null || audioSource.isPlaying == false) {
-                Debug.Log(clipName + "????????????????????");
+                Debug.LogWarning($"{clipName}が見つかりません.");
                 return;
             }
             StartCoroutine(audioSource.StopWithFadeOut(fadeTime));
@@ -121,18 +117,34 @@ namespace SoundManagement {
             SetSEVolume(vol);
         }
         public void SetBGMVolume(float vol) {
-            foreach (var s in this.bgmAudioSources) {
+            foreach (var s in this._bgmAudioSources) {
                 s.volume = vol;
             }
-            bgm.volume = vol;
-            bgmVolume = vol;
+            _bgm.volume = vol;
+            _bgmVolume = vol;
         }
         public void SetSEVolume(float vol) {
-            foreach (var s in this.seAudioSources) {
+            foreach (var s in this._seAudioSources) {
                 s.volume = vol;
             }
-            seSource.volume = vol;
-            seVolume = vol;
+            _seSource.volume = vol;
+            _seVolume = vol;
+        }
+
+        private AudioSource FindAudioSourceBGM(string clipName) {
+            return _bgmAudioSources.FirstOrDefault(s => s.clip.name == clipName);
+        }
+        private AudioClip FindAudioClipBGM(string clipName) {
+            foreach (var c in _bgmClips) {
+                if (c.name == clipName) return c;
+            }
+            return null;
+        }
+        private AudioSource AllocateAudioSourceBGM() {
+            foreach (var s in _bgmAudioSources) {
+                if (s.clip == null) return s;
+            }
+            return null;
         }
     }
 
