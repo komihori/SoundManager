@@ -128,7 +128,7 @@ namespace SoundManagement {
             _seAMG.audioMixer.GetFloat("SE", out db);
             return Db2Vol(db);
         }
-        public static float Vol2Db(float vol) => Mathf.Log10(vol) * 20f;
+        public static float Vol2Db(float vol) => vol > 0 ? (Mathf.Log10(vol) * 20f) : -80f;
         public static float Db2Vol(float db) => Mathf.Pow(10, db / 20f);
     }
 
